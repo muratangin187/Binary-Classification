@@ -5,6 +5,7 @@ class DecisionTree {
 private:
 	DecisionTreeNode* rootPtr;
 public:
+	~DecisionTree();
 	void train(const bool**, const int*, const int, const int);
 	void train(const string, const int, const int);
 	int predict(const bool*);

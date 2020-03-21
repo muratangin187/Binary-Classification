@@ -6,6 +6,7 @@ private:
 public:
 	DecisionTreeNode();
 	DecisionTreeNode(const int itemId, DecisionTreeNode* leftPtr = nullptr, DecisionTreeNode* rightPtr = nullptr);
+	~DecisionTreeNode();
 	void setItemId(const int itemId);
 	int getItemId();
 	void setLeftChild( DecisionTreeNode* leftPtr);

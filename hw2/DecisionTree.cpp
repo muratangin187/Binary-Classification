@@ -16,15 +16,19 @@ void DecisionTree::train(const bool** data, const int* labels, const int numSamp
 	delete[] usedSamples;
 }
 
+DecisionTree::~DecisionTree() {
+	delete rootPtr;
+}
+
 void DecisionTree::train(DecisionTreeNode* nodePtr, const bool** data, const int* labels, bool* usedSamples, bool* usedFeatures, const int numSamples, const int numFeatures) {
 	int currentLabel = -1;
 	int lastLabel = -1;
 	bool isPure = true;
-	int currentSampleCount = 0;
-	for (size_t i = 0; i < numSamples - 1; i++)
+	int valueForPureClass = -1; // class type if data is pure already
+	for (size_t i = 0; i < numSamples; i++)
 	{
 		if (usedSamples[i]) {
-			currentSampleCount++;
+			valueForPureClass = labels[i];
 			if (currentLabel == -1) {
 				currentLabel = labels[i];
 			}else{
@@ -37,52 +41,41 @@ void DecisionTree::train(DecisionTreeNode* nodePtr, const bool** data, const int
 			}
 		}
 	}
-	if (currentSampleCount == 1 || currentSampleCount == 0) isPure = true;
-	if (isPure) {
-		int value;
-		for (size_t i = 0; i < numSamples; i++)
-		{
-			if (usedSamples[i]) {
-				value = labels[i];
-				break;
-			}
-		}
-		nodePtr->setItemId(value);
+	//if (currentSampleCount == 1 || currentSampleCount == 0) isPure = true;
+	if (lastLabel == -1) isPure = true;
+	if (isPure) {	// if data is pure, return class=id as a result.
+		nodePtr->setItemId(valueForPureClass);
 		return;
 	}
 
 	bool isAllFeaturesUsed = true;
-	for (size_t i = 0; i < numFeatures; i++)
+	for (size_t i = 0; i < numFeatures; i++) // check all features are used or not?
 		if (usedFeatures[i] == false)
 			isAllFeaturesUsed = false;
 
-
+	// if all features are used while data is not pure,
+	// make a decision by looking the majority class in data
 	if (isAllFeaturesUsed) {
 		// create a class node(leaf) by choosing the majority class within the set of samples.
 		int max = -1;
 		for (size_t i = 0; i < numSamples; i++)
 		{
 			if (usedSamples[i]) {
-				if (max < labels[i]) max = labels[i];
+				if (max < labels[i]) max = labels[i];	// find the upper limit of class numbers
 			}
 		}
 		int* classValues = new int[max];
 		for (size_t i = 0; i < max; i++)
-		{
 			classValues[i] = 0;
-		}
+
 		for (size_t i = 0; i < numSamples; i++)
-		{
-			if (usedSamples[i]) {
+			if (usedSamples[i])
 				classValues[labels[i] - 1]++;
-			}
-		}
-		int resultClass;
-		int maxOfClasses = -1;
+
+		int resultClass = 1;
 		for (size_t i = 0; i < max; i++)
 		{
-			if (maxOfClasses < classValues[i]) {
-				maxOfClasses = classValues[i];
+			if (classValues[resultClass-1] < classValues[i]) {
 				resultClass = i+1;
 			}
 		}
@@ -140,50 +133,46 @@ void DecisionTree::train(DecisionTreeNode* nodePtr, const bool** data, const int
 }
 
 void DecisionTree::train(const string fileName, const int numSamples, const int numFeatures) {
-	string lineString;
+	string lineString;		// string contains current line in file
 	ifstream file;
-	file.open(fileName);
-	bool** array = new bool*[numSamples];
+	file.open(fileName);	// open file
+
 	int* labels = new int[numSamples];
-	
+
+	bool** array = new bool*[numSamples];	// create a temp array for const bool array
 	for (size_t i = 0; i < numSamples; i++)
 	{
 		array[i] = new bool[numFeatures];
 	}
 	int i = 0;
-	while (!(file.eof()))
+	while (!(file.eof()))		// until there is no new line in file
 	{
-		getline(file, lineString);
+		getline(file, lineString);	// get line to lineString
 		int pos = 0;
 		int j = 0;
-		while (pos = lineString.find(" ") != std::string::npos) {
+		while (pos = lineString.find(" ") != std::string::npos) {	// if lineString contains space
 			string selected = lineString.substr(0, pos);
-			//cout << selected << " " ;
-			array[i][j] = std::stoi(selected);
+			array[i][j] = std::stoi(selected); // get binary number to array
 			lineString.erase(0, pos + 1);
 			j++;
 		}
-		//cout << lineString;
 		if(i != numSamples)
-			labels[i] = std::stoi(lineString);
-		//cout << endl;
+			labels[i] = std::stoi(lineString);	// get class result from last digits of line
 		i++;
-	}
-	const bool* data[498];
-	for (size_t i = 0; i < numSamples; i++)
-	{
-		data[i] = array[i];
 	}
 
 	file.close();
 
-	train(data, labels, numSamples, numFeatures);
+	const bool* const* data = array;
+
+	train((const bool**)data, labels, numSamples, numFeatures);
 	delete[] labels;
 	for (size_t i = 0; i < numSamples; i++)
 	{
-		delete[] array[i];
 		//delete[] data[i];
+		delete[] array[i];
 	}
+	delete[] array;
 }
 
 int DecisionTree::predict(const bool* data) {
@@ -202,13 +191,9 @@ int DecisionTree::predict(const bool* data) {
 double DecisionTree::test(const bool** data, const int* labels, const int numSamples) {
 	int trueCount = 0;
 	for (size_t i = 0; i < numSamples; i++)
-	{
-		const bool* currentData =data[i];
-		int prediction = predict(currentData);
-		delete[] currentData;
-		int real = labels[i];
-		if (real == prediction) trueCount++;
-	}
+		if (labels[i] == predict(data[i]))
+			trueCount++;
+
 	return (double)trueCount / numSamples;
 }
 
@@ -216,11 +201,11 @@ double DecisionTree::test(const string fileName, const int numSamples) {
 	string lineString;
 	ifstream file;
 	file.open(fileName);
-	streampos oldpos = file.tellg();
+	streampos oldpos = file.tellg(); // store file beginning
 	string lineForNumber;
-	getline(file, lineForNumber);
-	file.seekg(oldpos);
-	int j = 0;
+	getline(file, lineForNumber);	// get first line of file
+	file.seekg(oldpos);	// come back to file beginning
+	int j = 0;	// feature size
 	while (lineForNumber.find(" ") != std::string::npos) {
 		lineForNumber.erase(0, lineForNumber.find(" ") + 1);
 		j++;
@@ -230,7 +215,7 @@ double DecisionTree::test(const string fileName, const int numSamples) {
 
 	for (size_t i = 0; i < numSamples; i++)
 	{
-		array[i] = new bool[j];
+		array[i] = new bool[j];	// create array in feature size(j)
 	}
 	int i = 0;
 	while (!(file.eof()))
@@ -240,32 +225,25 @@ double DecisionTree::test(const string fileName, const int numSamples) {
 		int j = 0;
 		while (pos = lineString.find(" ") != std::string::npos) {
 			string selected = lineString.substr(0, pos);
-			//cout << selected << " " ;
 			array[i][j] = std::stoi(selected);
 			lineString.erase(0, pos + 1);
 			j++;
 		}
-		//cout << lineString;
 		if (i != numSamples)
 			labels[i] = std::stoi(lineString);
-		//cout << endl;
 		i++;
 	}
-	const bool* data[473];
-	for (size_t i = 0; i < numSamples; i++)
-	{
-		data[i] = array[i];
-	}
+	const bool* const* data = array;
 
 	file.close();
 
-	double result = test(data, labels, numSamples);
+	double result = test((const bool**)data, labels, numSamples);
 	delete[] labels;
 	for (size_t i = 0; i < numSamples; i++)
 	{
-		//delete[] array[i];
-		//delete[] data[i];
+		delete[] data[i];
 	}
+	delete[] data;
 	return result;
 }
 
@@ -318,8 +296,8 @@ double DecisionTree::calculateInformationGain(const bool** data, const int* labe
 				classSize = labels[i];
 		}
 
-	usedData = new bool* [usedDataCount];
-	usedLabels = new int[usedDataCount];
+	usedData = new bool* [usedDataCount];	// my data contains only used ones
+	usedLabels = new int[usedDataCount];	// my data's labels contains only used ones
 
 	int indexOfUsed = 0;
 	for (size_t i = 0; i < numSamples; i++)
@@ -371,6 +349,7 @@ double DecisionTree::calculateInformationGain(const bool** data, const int* labe
 	{
 		delete[] usedData[i];
 	}
+	delete[] usedData;
 	delete[] usedLabels;
 
 	hP = calculateEntropy(classCounts, classSize);

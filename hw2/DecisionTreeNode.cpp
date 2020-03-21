@@ -6,6 +6,13 @@ DecisionTreeNode::DecisionTreeNode() {
 	leftPtr = nullptr;
 }
 
+DecisionTreeNode::~DecisionTreeNode() {
+	if(leftPtr != nullptr)
+		delete leftPtr;
+	if (rightPtr != nullptr)
+		delete rightPtr;
+}
+
 DecisionTreeNode::DecisionTreeNode(const int itemId, DecisionTreeNode* leftPtr, DecisionTreeNode* rightPtr) {
 	this->leftPtr = leftPtr;
 	this->rightPtr = rightPtr;
